@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Einfaches Tetris</title>
+    <title>Tetris - Erweiterte Grafik</title>
     <style>
         body {
             background-color: #202028;
@@ -14,12 +14,16 @@
             margin-top: 50px;
         }
         canvas {
-            background-color: #000;
-            border: 2px solid #fff;
+            background-color: #111;
+            border: 2px solid #555;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
         }
         .anleitung {
             margin-top: 20px;
             font-size: 16px;
+            text-align: center;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -38,7 +42,8 @@
     <script>
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
-        context.scale(20, 20); // Skaliert das Spielfeld, damit die Blöcke größer sind
+        const scale = 20;
+        context.scale(scale, scale); // Skaliert das Spielfeld
 
         // Das Spielfeld (die "Arena") erstellen
         function createMatrix(w, h) {
@@ -52,71 +57,109 @@
         // Die verschiedenen Tetris-Formen definieren
         function createPiece(type) {
             if (type === 'T') {
-                return [
-                    [0, 0, 0],
-                    [1, 1, 1],
-                    [0, 1, 0],
-                ];
+                return [[0, 0, 0], [1, 1, 1], [0, 1, 0]];
             } else if (type === 'O') {
-                return [
-                    [2, 2],
-                    [2, 2],
-                ];
+                return [[2, 2], [2, 2]];
             } else if (type === 'L') {
-                return [
-                    [0, 3, 0],
-                    [0, 3, 0],
-                    [0, 3, 3],
-                ];
+                return [[0, 3, 0], [0, 3, 0], [0, 3, 3]];
             } else if (type === 'J') {
-                return [
-                    [0, 4, 0],
-                    [0, 4, 0],
-                    [4, 4, 0],
-                ];
+                return [[0, 4, 0], [0, 4, 0], [4, 4, 0]];
             } else if (type === 'I') {
-                return [
-                    [0, 5, 0, 0],
-                    [0, 5, 0, 0],
-                    [0, 5, 0, 0],
-                    [0, 5, 0, 0],
-                ];
+                return [[0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0]];
             } else if (type === 'S') {
-                return [
-                    [0, 6, 6],
-                    [6, 6, 0],
-                    [0, 0, 0],
-                ];
+                return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
             } else if (type === 'Z') {
-                return [
-                    [7, 7, 0],
-                    [0, 7, 7],
-                    [0, 0, 0],
-                ];
+                return [[7, 7, 0], [0, 7, 7], [0, 0, 0]];
             }
         }
 
-        // Zeichnet die Blöcke auf den Bildschirm
-        function drawMatrix(matrix, offset) {
+        // --- NEU: Funktion für 3D-Schattierung ---
+        function drawBlock(x, y, color, isGhost = false) {
+            if (isGhost) {
+                // Zeichnet nur den Umriss für die Projektion
+                context.fillStyle = "rgba(255, 255, 255, 0.1)";
+                context.fillRect(x, y, 1, 1);
+                context.strokeStyle = "rgba(255, 255, 255, 0.3)";
+                context.lineWidth = 0.05;
+                context.strokeRect(x, y, 1, 1);
+                return;
+            }
+
+            // Grundfarbe
+            context.fillStyle = color;
+            context.fillRect(x, y, 1, 1);
+
+            // Lichtkante (oben und links)
+            context.fillStyle = "rgba(255, 255, 255, 0.4)";
+            context.fillRect(x, y, 1, 0.15); // Oben
+            context.fillRect(x, y, 0.15, 1); // Links
+
+            // Schattenkante (unten und rechts)
+            context.fillStyle = "rgba(0, 0, 0, 0.4)";
+            context.fillRect(x, y + 0.85, 1, 0.15); // Unten
+            context.fillRect(x + 0.85, y, 0.15, 1); // Rechts
+
+            // Schwarzer Rahmen für Kontrast
+            context.strokeStyle = "rgba(0, 0, 0, 0.8)";
+            context.lineWidth = 0.05;
+            context.strokeRect(x, y, 1, 1);
+        }
+
+        // --- NEU: Zeichnet das Hintergrund-Raster ---
+        function drawGrid() {
+            context.strokeStyle = "rgba(255, 255, 255, 0.05)";
+            context.lineWidth = 0.05;
+            for (let x = 0; x <= canvas.width / scale; x++) {
+                context.beginPath();
+                context.moveTo(x, 0);
+                context.lineTo(x, canvas.height / scale);
+                context.stroke();
+            }
+            for (let y = 0; y <= canvas.height / scale; y++) {
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(canvas.width / scale, y);
+                context.stroke();
+            }
+        }
+
+        // Zeichnet die Matrizen (Spielfeld oder Tetromino)
+        function drawMatrix(matrix, offset, isGhost = false) {
             matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
                     if (value !== 0) {
-                        context.fillStyle = colors[value];
-                        context.fillRect(x + offset.x, y + offset.y, 1, 1);
+                        drawBlock(x + offset.x, y + offset.y, colors[value], isGhost);
                     }
                 });
             });
         }
 
-        // Zeichnet das gesamte Spiel (Spielfeld + aktuellen Block)
+        // --- NEU: Berechnet und zeichnet die Projektion (Ghost Piece) ---
+        function drawGhostPiece() {
+            const ghost = {
+                matrix: player.matrix,
+                pos: { x: player.pos.x, y: player.pos.y }
+            };
+            // Simuliere den Fall, bis eine Kollision auftritt
+            while (!collide(arena, ghost)) {
+                ghost.pos.y++;
+            }
+            ghost.pos.y--; // Einen Schritt zurück zur letzten gültigen Position
+            drawMatrix(ghost.matrix, ghost.pos, true);
+        }
+
+        // Zeichnet das gesamte Spiel
         function draw() {
-            context.fillStyle = '#000';
-            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = '#111'; // Dunkelgrauer Hintergrund
+            context.fillRect(0, 0, canvas.width / scale, canvas.height / scale);
+            
+            drawGrid();
             drawMatrix(arena, {x: 0, y: 0});
+            drawGhostPiece();
             drawMatrix(player.matrix, player.pos);
         }
 
-        // Überprüft, ob ein Block die Wände oder andere Blöcke berührt
+        // Überprüft Kollisionen
         function collide(arena, player) {
             const m = player.matrix;
             const o = player.pos;
@@ -131,7 +174,7 @@
             return false;
         }
 
-        // Fügt den fallenden Block fest in das Spielfeld ein
+        // Fügt den Block in das Spielfeld ein
         function merge(arena, player) {
             player.matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
@@ -142,7 +185,7 @@
             });
         }
 
-        // Dreht den Block mathematisch (Matrix-Transposition)
+        // Dreht den Block mathematisch
         function rotate(matrix, dir) {
             for (let y = 0; y < matrix.length; ++y) {
                 for (let x = 0; x < y; ++x) {
@@ -156,7 +199,7 @@
             }
         }
 
-        // Lässt den Block nach unten fallen
+        // Lässt den Block fallen
         function playerDrop() {
             player.pos.y++;
             if (collide(arena, player)) {
@@ -168,7 +211,7 @@
             dropCounter = 0;
         }
 
-        // Bewegt den Block nach links oder rechts
+        // Bewegt den Block seitwärts
         function playerMove(dir) {
             player.pos.x += dir;
             if (collide(arena, player)) {
@@ -176,20 +219,19 @@
             }
         }
 
-        // Erzeugt einen neuen Block oben in der Mitte
+        // Erzeugt einen neuen Block
         function playerReset() {
             const pieces = 'ILJOTSZ';
             player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
             player.pos.y = 0;
             player.pos.x = (Math.floor(arena[0].length / 2)) - (Math.floor(player.matrix[0].length / 2));
             
-            // Spiel vorbei (Game Over), wenn sofort eine Kollision stattfindet
             if (collide(arena, player)) {
                 arena.forEach(row => row.fill(0));
             }
         }
 
-        // Dreht den Block und korrigiert die Position an den Rändern
+        // Rotiert den Block sicher
         function playerRotate(dir) {
             const pos = player.pos.x;
             let offset = 1;
@@ -205,7 +247,7 @@
             }
         }
 
-        // Löscht volle Reihen und rückt den Rest nach unten
+        // Löscht volle Reihen
         function arenaSweep() {
             outer: for (let y = arena.length - 1; y > 0; --y) {
                 for (let x = 0; x < arena[y].length; ++x) {
@@ -220,10 +262,10 @@
         }
 
         let dropCounter = 0;
-        let dropInterval = 1000; // Block fällt jede Sekunde
+        let dropInterval = 1000;
         let lastTime = 0;
 
-        // Die Hauptschleife des Spiels (Game Loop)
+        // Die Hauptschleife des Spiels
         function update(time = 0) {
             const deltaTime = time - lastTime;
             lastTime = time;
@@ -244,16 +286,15 @@
         const arena = createMatrix(12, 20);
         const player = { pos: {x: 0, y: 0}, matrix: null };
 
-        // Tastatur-Eingaben lesen
         document.addEventListener('keydown', event => {
             if (event.keyCode === 37) {
-                playerMove(-1); // Links
+                playerMove(-1);
             } else if (event.keyCode === 39) {
-                playerMove(1);  // Rechts
+                playerMove(1);
             } else if (event.keyCode === 40) {
-                playerDrop();   // Unten
+                playerDrop();
             } else if (event.keyCode === 38) {
-                playerRotate(1); // Oben (Drehen)
+                playerRotate(1);
             }
         });
 
