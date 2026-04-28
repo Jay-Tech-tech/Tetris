@@ -45,7 +45,7 @@
         const scale = 20;
         context.scale(scale, scale); // Skaliert das Spielfeld
 
-        // Das Spielfeld (die "Arena") erstellen
+        // Das Spielfeld erstellen
         function createMatrix(w, h) {
             const matrix = [];
             while (h--) {
@@ -73,7 +73,8 @@
             }
         }
 
-        // --- NEU: Funktion für 3D-Schattierung ---
+        // Funktion für 3D-Schattierung
+
         function drawBlock(x, y, color, isGhost = false) {
             if (isGhost) {
                 // Zeichnet nur den Umriss für die Projektion
@@ -105,7 +106,7 @@
             context.strokeRect(x, y, 1, 1);
         }
 
-        // --- NEU: Zeichnet das Hintergrund-Raster ---
+        // Zeichnet das Hintergrund-Raster
         function drawGrid() {
             context.strokeStyle = "rgba(255, 255, 255, 0.05)";
             context.lineWidth = 0.05;
@@ -134,7 +135,7 @@
             });
         }
 
-        // --- NEU: Berechnet und zeichnet die Projektion (Ghost Piece) ---
+        // Berechnet und zeichnet die Projektion 
         function drawGhostPiece() {
             const ghost = {
                 matrix: player.matrix,
